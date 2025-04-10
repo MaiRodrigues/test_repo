@@ -24,6 +24,3 @@ do
     cat ~/home/maiara_sf/test_repo/data/data_test.txt >> new_test
     cat ~/home/maiara_sf/test_repo/data/data_test.txt >> new_test
 done
-
-
-
