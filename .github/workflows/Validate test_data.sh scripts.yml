@@ -1,0 +1,43 @@
+name: Validate test_data.sh scripts
+
+on:
+  pull_request:
+    paths:
+      - '**/test_data.sh'
+
+jobs:
+  validate-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate test_data.sh scripts
+        id: validate
+        run: |
+          # Find all test_data.sh files
+          files=$(find . -name "test_data.sh")
+          invalid_files=""
+          
+          for file in $files; do
+            echo "Checking $file"
+            
+            # Get the first non-comment, non-empty command in the script
+            first_cmd=$(grep -v -E '^\s*#|^\s*$' "$file" | head -n 1 | awk '{print $1}')
+            
+            if [ "$first_cmd" != "cp" ]; then
+              echo "::error file=$file::The first command must be 'cp' in test_data.sh"
+              invalid_files="$invalid_files $file"
+            fi
+          done
+          
+          if [ -n "$invalid_files" ]; then
+            echo "::set-output name=has_errors::true"
+            echo "The following files don't start with 'cp':$invalid_files"
+            exit 1
+          else
+            echo "::set-output name=has_errors::false"
+            echo "All test_data.sh files are valid"
+          fi
