@@ -1,0 +1,52 @@
+name: Enforce 'cp' as first command in test_data.sh
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for proper diffing
+
+      - name: Find modified test_data.sh files
+        id: find-scripts
+        run: |
+          # Get list of modified/added test_data.sh files
+          scripts=$(git diff --name-only --diff-filter=AM origin/main..HEAD | grep 'generate_data\.sh$' || true)
+          
+          if [ -n "$scripts" ]; then
+            echo "scripts=$scripts" >> $GITHUB_OUTPUT
+            echo "Found scripts to check: $scripts"
+          else
+            echo "No test_data.sh files modified in this PR"
+          fi
+
+      - name: Verify 'cp' is the first command
+        if: steps.find-scripts.outputs.scripts != ''
+        run: |
+          scripts="${{ steps.find-scripts.outputs.scripts }}"
+          has_issues=false
+
+          for script in $scripts; do
+            echo "Checking $script..."
+            
+            # Extract first non-comment, non-empty command (ignoring shebang)
+            first_cmd=$(grep -v '^\s*#' "$script" | grep -v '^\s*$' | grep -v '^#!/' | head -n 1 | awk '{print $1}')
+            
+            if [ "$first_cmd" != "cp" ]; then
+              echo "::error file=$script,line=1::The first command in test_data.sh must be 'cp' (found: '$first_cmd')"
+              has_issues=true
+            fi
+          done
+
+          if [ "$has_issues" = true ]; then
+            echo "❌ Some scripts do not start with 'cp'"
+            exit 1
+          else
+            echo "✅ All test_data.sh files start with 'cp'"
+          fi
