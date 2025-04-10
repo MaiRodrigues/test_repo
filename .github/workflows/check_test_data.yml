@@ -1,52 +1,51 @@
-name: Enforce 'cp' as first command in test_data.sh
+name: Validate test_data.sh scripts
 
 on:
   pull_request:
-    branches: [ main ]
+    paths:
+      - '**/test_data.sh'
 
 jobs:
-  check-scripts:
+  validate-scripts:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository with full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for proper diffing
+          fetch-depth: 0
 
-      - name: Find modified test_data.sh files
-        id: find-scripts
+      - name: Validate test_data.sh scripts
+        id: validate
         run: |
-          # Get list of modified/added test_data.sh files
-          scripts=$(git diff --name-only --diff-filter=AM origin/main..HEAD | grep 'generate_data\.sh$' || true)
+          # Find all test_data.sh files in the PR changes
+          files=$(git diff --name-only HEAD^ -- '**/test_data.sh')
           
-          if [ -n "$scripts" ]; then
-            echo "scripts=$scripts" >> $GITHUB_OUTPUT
-            echo "Found scripts to check: $scripts"
-          else
-            echo "No test_data.sh files modified in this PR"
+          if [ -z "$files" ]; then
+            echo "No test_data.sh files modified"
+            exit 0
           fi
 
-      - name: Verify 'cp' is the first command
-        if: steps.find-scripts.outputs.scripts != ''
-        run: |
-          scripts="${{ steps.find-scripts.outputs.scripts }}"
-          has_issues=false
+          has_errors=false
+          error_message=""
 
-          for script in $scripts; do
-            echo "Checking $script..."
+          for file in $files; do
+            echo "Checking $file"
             
-            # Extract first non-comment, non-empty command (ignoring shebang)
-            first_cmd=$(grep -v '^\s*#' "$script" | grep -v '^\s*$' | grep -v '^#!/' | head -n 1 | awk '{print $1}')
+            # Get the first non-comment, non-empty command in the script
+            first_cmd=$(grep -E '^[^#]' "$file" | grep -v -m 1 '^[[:space:]]*$' | awk '{print $1}')
             
             if [ "$first_cmd" != "cp" ]; then
-              echo "::error file=$script,line=1::The first command in test_data.sh must be 'cp' (found: '$first_cmd')"
-              has_issues=true
+              has_errors=true
+              error_message+="❌ Error in $file: First command must be 'cp', but found '${first_cmd}'\n"
+            else
+              echo "✅ $file starts with 'cp'"
             fi
           done
 
-          if [ "$has_issues" = true ]; then
-            echo "❌ Some scripts do not start with 'cp'"
+          if $has_errors; then
+            echo "::error::Some test_data.sh files don't start with 'cp' command"
+            echo -e "$error_message"
             exit 1
           else
-            echo "✅ All test_data.sh files start with 'cp'"
+            echo "All test_data.sh files are valid"
           fi
