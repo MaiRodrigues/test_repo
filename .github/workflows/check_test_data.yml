@@ -1,9 +1,9 @@
-name: Validate test_data.sh scripts
+name: Validate generate_data.sh scripts
 
 on:
   pull_request:
     paths:
-      - '**/test_data.sh'
+      - '**/generate_data.sh'
 
 jobs:
   validate-scripts:
@@ -14,14 +14,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate test_data.sh scripts
+      - name: Validate generate_data.sh scripts
         id: validate
         run: |
-          # Find all test_data.sh files in the PR changes
-          files=$(git diff --name-only HEAD^ -- '**/test_data.sh')
+          # Find all generate_data.sh files in the PR changes
+          files=$(git diff --name-only HEAD^ -- '**/generate_data.sh')
           
           if [ -z "$files" ]; then
-            echo "No test_data.sh files modified"
+            echo "No generate_data.sh files modified"
             exit 0
           fi
 
@@ -43,9 +43,9 @@ jobs:
           done
 
           if $has_errors; then
-            echo "::error::Some test_data.sh files don't start with 'cp' command"
+            echo "::error::Some generate_data.sh files don't start with 'cp' command"
             echo -e "$error_message"
             exit 1
           else
-            echo "All test_data.sh files are valid"
+            echo "All generate_data.sh files are valid"
           fi
