@@ -1,0 +1,33 @@
+name: Auto Approve PRs from Trusted Users
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if PR author is trusted
+        id: check_author
+        run: |
+          TRUSTED_USERS="MaiRodrigues"
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          if [[ $TRUSTED_USERS == *"$PR_AUTHOR"* ]]; then
+            echo "::set-output name=is_trusted::true"
+          else
+            echo "::set-output name=is_trusted::false"
+          fi
+
+      - name: Auto Approve PR
+        if: steps.check_author.outputs.is_trusted == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: approval } = await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              event: 'APPROVE'
+            });
+            console.log(`Approved PR #${context.payload.pull_request.number}`);
