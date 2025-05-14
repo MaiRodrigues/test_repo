@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Auto Approve PR
         if: |
-          contains(fromJson('["user1", "user2", "user3"]'), github.actor)
+          contains(fromJson('["m.salesfg"]'), github.actor)
         uses: hmarr/auto-approve-action@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  # Or a PAT for a specific user
