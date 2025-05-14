@@ -1,33 +1,19 @@
-name: Auto Approve PRs from Trusted Users
+name: Auto Approve Trusted Users
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, synchronize]
 
 jobs:
-  approve:
+  auto-approve:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # Required to approve PRs
     steps:
-      - name: Check if PR author is trusted
-        id: check_author
-        run: |
-          TRUSTED_USERS="GevTeste"
-          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-          if [[ $TRUSTED_USERS == *"$PR_AUTHOR"* ]]; then
-            echo "::set-output name=is_trusted::true"
-          else
-            echo "::set-output name=is_trusted::false"
-          fi
-
       - name: Auto Approve PR
-        if: steps.check_author.outputs.is_trusted == 'true'
-        uses: actions/github-script@v6
+        if: |
+          contains(fromJson('["user1", "user2", "user3"]'), github.actor)
+        uses: hmarr/auto-approve-action@v4
         with:
-          script: |
-            const { data: approval } = await github.rest.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
-              event: 'APPROVE'
-            });
-            console.log(`Approved PR #${context.payload.pull_request.number}`);
+          github-token: ${{ secrets.GITHUB_TOKEN }}  # Or a PAT for a specific user
+          review-message: "✅ Auto-approved!"
